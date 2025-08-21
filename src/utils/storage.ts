@@ -1,43 +1,72 @@
+import { supabase } from '@/integrations/supabase/client';
 import { Trip, MaintenanceItem } from '@/types/tracking';
 
-const TRIPS_KEY = 'uno-track-trips';
-const MAINTENANCE_KEY = 'uno-track-maintenance';
-const LAST_KM_KEY = 'uno-track-last-km';
+export async function saveTrip(trip: Trip): Promise<void> {
+  const { error } = await supabase
+    .from('trips')
+    .insert({
+      start_km: trip.startKm,
+      end_km: trip.endKm,
+      km_traveled: trip.kmTraveled,
+      fuel_consumed: trip.fuelConsumed,
+      average_consumption: trip.averageConsumption,
+      start_time: trip.startTime.toISOString(),
+      end_time: trip.endTime.toISOString(),
+      locations: JSON.stringify(trip.locations),
+      user_id: (await supabase.auth.getUser()).data.user?.id
+    });
 
-export function saveTrip(trip: Trip): void {
-  const trips = getTrips();
-  trips.push(trip);
-  localStorage.setItem(TRIPS_KEY, JSON.stringify(trips));
-  
-  // Update last KM
-  localStorage.setItem(LAST_KM_KEY, trip.endKm.toString());
+  if (error) {
+    console.error('Erro ao salvar percurso:', error);
+    throw error;
+  }
 }
 
-export function getTrips(): Trip[] {
-  const tripsData = localStorage.getItem(TRIPS_KEY);
-  if (!tripsData) return [];
-  
-  return JSON.parse(tripsData).map((trip: any) => ({
-    ...trip,
-    startTime: new Date(trip.startTime),
-    endTime: new Date(trip.endTime)
+export async function getTrips(): Promise<Trip[]> {
+  const { data, error } = await supabase
+    .from('trips')
+    .select('*')
+    .order('end_time', { ascending: false });
+
+  if (error) {
+    console.error('Erro ao buscar percursos:', error);
+    return [];
+  }
+
+  return (data || []).map((trip: any) => ({
+    id: trip.id,
+    startKm: Number(trip.start_km),
+    endKm: Number(trip.end_km),
+    kmTraveled: Number(trip.km_traveled),
+    fuelConsumed: Number(trip.fuel_consumed),
+    averageConsumption: Number(trip.average_consumption),
+    startTime: new Date(trip.start_time),
+    endTime: new Date(trip.end_time),
+    locations: JSON.parse(trip.locations || '[]')
   }));
 }
 
-export function getTotalKm(): number {
-  const trips = getTrips();
+export async function getTotalKm(): Promise<number> {
+  const trips = await getTrips();
   if (trips.length === 0) return 0;
   
   return trips.reduce((max, trip) => Math.max(max, trip.endKm), 0);
 }
 
-export function getLastKm(): number {
-  const lastKm = localStorage.getItem(LAST_KM_KEY);
-  return lastKm ? parseInt(lastKm) : 0;
+export async function getLastKm(): Promise<number> {
+  const { data, error } = await supabase
+    .from('trips')
+    .select('end_km')
+    .order('end_time', { ascending: false })
+    .limit(1)
+    .single();
+
+  if (error || !data) return 0;
+  return Number(data.end_km);
 }
 
-export function calculateMaintenanceStatus(): MaintenanceItem[] {
-  const totalKm = getTotalKm();
+export async function calculateMaintenanceStatus(): Promise<MaintenanceItem[]> {
+  const totalKm = await getTotalKm();
   
   const maintenanceItems = [
     { name: 'Troca de óleo', intervalKm: 5000 },
@@ -62,8 +91,14 @@ export function calculateMaintenanceStatus(): MaintenanceItem[] {
   });
 }
 
-export function clearAllData(): void {
-  localStorage.removeItem(TRIPS_KEY);
-  localStorage.removeItem(MAINTENANCE_KEY);
-  localStorage.removeItem(LAST_KM_KEY);
+export async function clearAllData(): Promise<void> {
+  const { error } = await supabase
+    .from('trips')
+    .delete()
+    .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all user trips
+
+  if (error) {
+    console.error('Erro ao limpar dados:', error);
+    throw error;
+  }
 }

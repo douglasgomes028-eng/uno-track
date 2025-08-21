@@ -5,13 +5,22 @@ import { Wrench, AlertTriangle, CheckCircle, Clock } from 'lucide-react';
 import { calculateMaintenanceStatus } from '@/utils/storage';
 import { MaintenanceItem } from '@/types/tracking';
 import { useState, useEffect } from 'react';
+import { useAuth } from '@/components/AuthProvider';
 
 export function MaintenanceSection() {
+  const { user } = useAuth();
   const [maintenanceItems, setMaintenanceItems] = useState<MaintenanceItem[]>([]);
 
   useEffect(() => {
-    const updateMaintenance = () => {
-      setMaintenanceItems(calculateMaintenanceStatus());
+    const updateMaintenance = async () => {
+      if (!user) return;
+      
+      try {
+        const items = await calculateMaintenanceStatus();
+        setMaintenanceItems(items);
+      } catch (error) {
+        console.error('Error loading maintenance data:', error);
+      }
     };
 
     updateMaintenance();
@@ -20,7 +29,7 @@ export function MaintenanceSection() {
     window.addEventListener('storage', updateMaintenance);
     
     return () => window.removeEventListener('storage', updateMaintenance);
-  }, []);
+  }, [user]);
 
   const getStatusIcon = (item: MaintenanceItem) => {
     if (item.isOverdue) {
@@ -45,11 +54,23 @@ export function MaintenanceSection() {
     return Math.min(100, Math.max(0, progress));
   };
 
-  const getProgressColor = (item: MaintenanceItem) => {
-    if (item.isOverdue) return 'bg-destructive';
-    if (item.kmRemaining <= 500) return 'bg-warning';
-    return 'bg-success';
-  };
+  if (!user) {
+    return (
+      <Card className="shadow-card-custom">
+        <CardHeader className="bg-gradient-subtle rounded-t-lg">
+          <CardTitle className="flex items-center gap-2">
+            <Wrench className="w-5 h-5 text-primary" />
+            Manutenção Preventiva - Fiat Uno 1991
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-6 text-center">
+          <p className="text-muted-foreground">
+            Faça login para acompanhar a manutenção do seu veículo
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="shadow-card-custom">

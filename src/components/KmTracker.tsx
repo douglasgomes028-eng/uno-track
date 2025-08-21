@@ -8,20 +8,33 @@ import { Location, Trip, TrackingState } from '@/types/tracking';
 import { getCurrentLocation, watchPosition, calculateDistance } from '@/utils/geolocation';
 import { saveTrip, getLastKm } from '@/utils/storage';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/components/AuthProvider';
 
 export function KmTracker() {
+  const { user } = useAuth();
   const { toast } = useToast();
   const [trackingState, setTrackingState] = useState<TrackingState>({
     isTracking: false,
     currentTrip: null,
-    startKm: getLastKm(),
+    startKm: 0,
     currentLocation: null,
     totalDistance: 0
   });
   
-  const [startKmInput, setStartKmInput] = useState(getLastKm().toString());
+  const [startKmInput, setStartKmInput] = useState('0');
   const watchIdRef = useRef<number | null>(null);
   const lastLocationRef = useRef<Location | null>(null);
+
+  useEffect(() => {
+    const loadLastKm = async () => {
+      if (user) {
+        const lastKm = await getLastKm();
+        setTrackingState(prev => ({ ...prev, startKm: lastKm }));
+        setStartKmInput(lastKm.toString());
+      }
+    };
+    loadLastKm();
+  }, [user]);
 
   const requestLocationPermission = async () => {
     try {
@@ -43,6 +56,15 @@ export function KmTracker() {
   };
 
   const startTracking = async () => {
+    if (!user) {
+      toast({
+        title: "Login necessário",
+        description: "Faça login para salvar suas viagens.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const startKm = parseInt(startKmInput);
     if (isNaN(startKm) || startKm < 0) {
       toast({
@@ -105,7 +127,7 @@ export function KmTracker() {
     });
   };
 
-  const stopTracking = () => {
+  const stopTracking = async () => {
     if (watchIdRef.current) {
       navigator.geolocation.clearWatch(watchIdRef.current);
       watchIdRef.current = null;
@@ -126,23 +148,34 @@ export function KmTracker() {
       endTime: new Date()
     };
 
-    saveTrip(completedTrip);
-    
-    setTrackingState({
-      isTracking: false,
-      currentTrip: null,
-      startKm: endKm,
-      currentLocation: null,
-      totalDistance: 0
-    });
+    try {
+      await saveTrip(completedTrip);
+      
+      setTrackingState({
+        isTracking: false,
+        currentTrip: null,
+        startKm: endKm,
+        currentLocation: null,
+        totalDistance: 0
+      });
 
-    setStartKmInput(endKm.toFixed(1));
-    lastLocationRef.current = null;
+      setStartKmInput(endKm.toFixed(1));
+      lastLocationRef.current = null;
 
-    toast({
-      title: "Viagem finalizada!",
-      description: `Percurso de ${trackingState.totalDistance.toFixed(2)} km registrado.`,
-    });
+      // Trigger storage event to update other components
+      window.dispatchEvent(new Event('storage'));
+
+      toast({
+        title: "Viagem finalizada!",
+        description: `Percurso de ${trackingState.totalDistance.toFixed(2)} km registrado.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Não foi possível salvar a viagem.",
+        variant: "destructive",
+      });
+    }
   };
 
   useEffect(() => {
@@ -152,6 +185,27 @@ export function KmTracker() {
       }
     };
   }, []);
+
+  if (!user) {
+    return (
+      <Card className="shadow-card-custom">
+        <CardHeader className="bg-gradient-subtle rounded-t-lg">
+          <CardTitle className="flex items-center gap-2">
+            <Gauge className="w-5 h-5 text-primary" />
+            Controle de Quilometragem
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-6 text-center">
+          <p className="text-muted-foreground mb-4">
+            Faça login para começar a rastrear suas viagens
+          </p>
+          <Button onClick={() => window.location.href = '/auth'}>
+            Fazer Login
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="shadow-card-custom">

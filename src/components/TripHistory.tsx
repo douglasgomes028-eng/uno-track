@@ -6,17 +6,31 @@ import { getTrips, getTotalKm, getLastKm, clearAllData } from '@/utils/storage';
 import { Trip } from '@/types/tracking';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useEffect } from 'react';
+import { useAuth } from '@/components/AuthProvider';
 
 export function TripHistory() {
+  const { user } = useAuth();
   const { toast } = useToast();
   const [trips, setTrips] = useState<Trip[]>([]);
   const [totalKm, setTotalKm] = useState(0);
   const [lastKm, setLastKm] = useState(0);
 
-  const loadData = () => {
-    setTrips(getTrips());
-    setTotalKm(getTotalKm());
-    setLastKm(getLastKm());
+  const loadData = async () => {
+    if (!user) return;
+    
+    try {
+      const [tripsData, totalKmData, lastKmData] = await Promise.all([
+        getTrips(),
+        getTotalKm(), 
+        getLastKm()
+      ]);
+      
+      setTrips(tripsData);
+      setTotalKm(totalKmData);
+      setLastKm(lastKmData);
+    } catch (error) {
+      console.error('Error loading data:', error);
+    }
   };
 
   useEffect(() => {
@@ -27,16 +41,24 @@ export function TripHistory() {
     window.addEventListener('storage', handleStorageChange);
     
     return () => window.removeEventListener('storage', handleStorageChange);
-  }, []);
+  }, [user]);
 
-  const handleClearData = () => {
+  const handleClearData = async () => {
     if (window.confirm('Tem certeza que deseja limpar todo o histórico? Esta ação não pode ser desfeita.')) {
-      clearAllData();
-      loadData();
-      toast({
-        title: "Histórico limpo!",
-        description: "Todos os dados foram removidos.",
-      });
+      try {
+        await clearAllData();
+        await loadData();
+        toast({
+          title: "Histórico limpo!",
+          description: "Todos os dados foram removidos.",
+        });
+      } catch (error) {
+        toast({
+          title: "Erro",
+          description: "Não foi possível limpar os dados.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -49,6 +71,24 @@ export function TripHistory() {
       minute: '2-digit'
     }).format(date);
   };
+
+  if (!user) {
+    return (
+      <Card className="shadow-card-custom">
+        <CardHeader className="bg-gradient-subtle rounded-t-lg">
+          <CardTitle className="flex items-center gap-2">
+            <History className="w-5 h-5 text-primary" />
+            Histórico de Percursos
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-6 text-center">
+          <p className="text-muted-foreground">
+            Faça login para ver seu histórico de viagens
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="shadow-card-custom">
