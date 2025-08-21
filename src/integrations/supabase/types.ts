@@ -14,7 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      trips: {
+        Row: {
+          average_consumption: number
+          created_at: string
+          end_km: number
+          end_time: string
+          fuel_consumed: number
+          id: string
+          km_traveled: number
+          locations: Json
+          start_km: number
+          start_time: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          average_consumption: number
+          created_at?: string
+          end_km: number
+          end_time: string
+          fuel_consumed: number
+          id?: string
+          km_traveled: number
+          locations?: Json
+          start_km: number
+          start_time: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          average_consumption?: number
+          created_at?: string
+          end_km?: number
+          end_time?: string
+          fuel_consumed?: number
+          id?: string
+          km_traveled?: number
+          locations?: Json
+          start_km?: number
+          start_time?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
