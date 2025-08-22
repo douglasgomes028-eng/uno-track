@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Play, Square, MapPin, Fuel, Clock, Gauge } from 'lucide-react';
+import { MapComponent } from '@/components/MapComponent';
 import { Location, Trip, TrackingState } from '@/types/tracking';
 import { getCurrentLocation, watchPosition, calculateDistance } from '@/utils/geolocation';
 import { saveTrip, getLastKm } from '@/utils/storage';
@@ -266,6 +267,11 @@ export function KmTracker() {
                 Em andamento
               </Badge>
             </div>
+
+            <MapComponent 
+              currentLocation={trackingState.currentLocation}
+              locations={trackingState.currentTrip?.locations || []}
+            />
 
             <Button 
               onClick={stopTracking}

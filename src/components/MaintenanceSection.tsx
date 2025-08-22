@@ -45,6 +45,8 @@ export function MaintenanceSection() {
       return <Badge variant="destructive">Atrasada</Badge>;
     } else if (item.kmRemaining <= 500) {
       return <Badge className="bg-warning text-warning-foreground">Próxima</Badge>;
+    } else if (getProgressValue(item) >= 80) {
+      return <Badge variant="destructive">Revisar</Badge>;
     }
     return <Badge className="bg-success text-success-foreground">Em dia</Badge>;
   };
