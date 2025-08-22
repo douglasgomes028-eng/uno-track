@@ -28,14 +28,32 @@ export function MapComponent({ currentLocation, locations }: MapComponentProps) 
 
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
-      style: 'mapbox://styles/mapbox/streets-v11',
+      style: 'mapbox://styles/mapbox/streets-v12', // Melhor estilo similar ao Google Maps
       center: [initialLocation.lng, initialLocation.lat],
-      zoom: 15,
+      zoom: 17, // Zoom mais próximo para melhor visualização
+      pitch: 0, // Vista de cima como Google Maps
+      bearing: 0
     });
 
     // Add navigation controls
     map.current.addControl(
-      new mapboxgl.NavigationControl(),
+      new mapboxgl.NavigationControl({
+        visualizePitch: true,
+        showZoom: true,
+        showCompass: true
+      }),
+      'top-right'
+    );
+
+    // Add geolocation control (botão para centralizar na localização atual)
+    map.current.addControl(
+      new mapboxgl.GeolocateControl({
+        positionOptions: {
+          enableHighAccuracy: true
+        },
+        trackUserLocation: true,
+        showUserHeading: true
+      }),
       'top-right'
     );
 
@@ -44,20 +62,58 @@ export function MapComponent({ currentLocation, locations }: MapComponentProps) 
 
   useEffect(() => {
     if (map.current && currentLocation) {
-      // Update marker position
+      // Remove previous marker
       if (markerRef.current) {
         markerRef.current.remove();
       }
 
-      // Add current location marker
-      markerRef.current = new mapboxgl.Marker({ color: '#0070F0' })
+      // Create custom marker element (similar to Google Maps blue dot)
+      const markerElement = document.createElement('div');
+      markerElement.className = 'custom-marker';
+      markerElement.innerHTML = `
+        <div style="
+          width: 20px;
+          height: 20px;
+          background-color: #4285F4;
+          border: 3px solid white;
+          border-radius: 50%;
+          box-shadow: 0 2px 10px rgba(66, 133, 244, 0.5);
+          position: relative;
+        ">
+          <div style="
+            position: absolute;
+            top: -10px;
+            left: -10px;
+            width: 40px;
+            height: 40px;
+            background-color: rgba(66, 133, 244, 0.2);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+          "></div>
+        </div>
+      `;
+
+      // Add pulse animation
+      const style = document.createElement('style');
+      style.textContent = `
+        @keyframes pulse {
+          0% { transform: scale(0.8); opacity: 1; }
+          50% { transform: scale(1.2); opacity: 0.5; }
+          100% { transform: scale(0.8); opacity: 1; }
+        }
+      `;
+      document.head.appendChild(style);
+
+      // Add current location marker with custom element
+      markerRef.current = new mapboxgl.Marker(markerElement)
         .setLngLat([currentLocation.lng, currentLocation.lat])
         .addTo(map.current);
 
-      // Center map on current location
+      // Center map on current location with smooth animation
       map.current.easeTo({
         center: [currentLocation.lng, currentLocation.lat],
-        duration: 1000
+        duration: 1000,
+        zoom: 17
       });
 
       // Draw path if we have multiple locations
@@ -95,8 +151,8 @@ export function MapComponent({ currentLocation, locations }: MapComponentProps) 
               'line-cap': 'round'
             },
             paint: {
-              'line-color': '#0070F0',
-              'line-width': 4,
+              'line-color': '#4285F4',
+              'line-width': 5,
               'line-opacity': 0.8
             }
           });
@@ -158,7 +214,7 @@ export function MapComponent({ currentLocation, locations }: MapComponentProps) 
         </CardTitle>
       </CardHeader>
       <CardContent className="p-0">
-        <div ref={mapContainer} className="w-full h-80 rounded-b-lg" />
+        <div ref={mapContainer} className="w-full h-96 rounded-b-lg" />
       </CardContent>
     </Card>
   );
