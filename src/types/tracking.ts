@@ -23,6 +23,7 @@ export interface MaintenanceItem {
   nextKm: number;
   kmRemaining: number;
   isOverdue: boolean;
+  needsAttention?: boolean;
 }
 
 export interface TrackingState {

@@ -1,18 +1,17 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { useToast } from '@/components/ui/use-toast';
+import { Play, Square, MapPin, MapPinOff, Fuel, Gauge, Clock } from 'lucide-react';
+import { TrackingState, Location } from '@/types/tracking';
+import { calculateDistance, getCurrentLocation, watchPosition } from '@/utils/geolocation';
+import { saveTrip, getLastKm } from '@/utils/localStorageDB';
+import { MapComponent } from './MapComponent';
 import { Badge } from '@/components/ui/badge';
-import { Play, Square, MapPin, Fuel, Clock, Gauge } from 'lucide-react';
-import { MapComponent } from '@/components/MapComponent';
-import { Location, Trip, TrackingState } from '@/types/tracking';
-import { getCurrentLocation, watchPosition, calculateDistance } from '@/utils/geolocation';
-import { saveTrip, getLastKm } from '@/utils/storage';
-import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/components/AuthProvider';
 
-export function KmTracker() {
-  const { user } = useAuth();
+const KmTracker = () => {
   const { toast } = useToast();
   const [trackingState, setTrackingState] = useState<TrackingState>({
     isTracking: false,
@@ -21,21 +20,17 @@ export function KmTracker() {
     currentLocation: null,
     totalDistance: 0
   });
+  const [positionWatcher, setPositionWatcher] = useState<number | null>(null);
   
-  const [startKmInput, setStartKmInput] = useState('0');
-  const watchIdRef = useRef<number | null>(null);
-  const lastLocationRef = useRef<Location | null>(null);
+  const FUEL_EFFICIENCY = 0.1; // 10km/L = 0.1L/km
 
   useEffect(() => {
     const loadLastKm = async () => {
-      if (user) {
-        const lastKm = await getLastKm();
-        setTrackingState(prev => ({ ...prev, startKm: lastKm }));
-        setStartKmInput(lastKm.toString());
-      }
+      const lastKm = await getLastKm();
+      setTrackingState(prev => ({ ...prev, startKm: lastKm }));
     };
     loadLastKm();
-  }, [user]);
+  }, []);
 
   const requestLocationPermission = async () => {
     try {
@@ -43,7 +38,7 @@ export function KmTracker() {
       setTrackingState(prev => ({ ...prev, currentLocation: location }));
       toast({
         title: "GPS conectado!",
-        description: "Localização obtida com sucesso.",
+        description: "Localização obtida com sucesso."
       });
       return true;
     } catch (error) {
@@ -57,191 +52,169 @@ export function KmTracker() {
   };
 
   const startTracking = async () => {
-    if (!user) {
-      toast({
-        title: "Login necessário",
-        description: "Faça login para salvar suas viagens.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const startKm = parseInt(startKmInput);
-    if (isNaN(startKm) || startKm < 0) {
-      toast({
-        title: "KM inválido",
-        description: "Por favor, insira um valor válido para o KM inicial.",
-        variant: "destructive"
-      });
-      return;
-    }
-
     const hasLocation = await requestLocationPermission();
     if (!hasLocation) return;
 
     const currentLocation = await getCurrentLocation();
-    lastLocationRef.current = currentLocation;
+    const startTime = new Date();
 
-    const newTrip: Partial<Trip> = {
-      id: `trip-${Date.now()}`,
-      startKm,
-      startTime: new Date(),
+    const newTrip = {
+      id: crypto.randomUUID(),
+      startKm: trackingState.startKm,
+      startTime,
       locations: [currentLocation]
     };
 
     setTrackingState({
       isTracking: true,
       currentTrip: newTrip,
-      startKm,
+      startKm: trackingState.startKm,
       currentLocation,
       totalDistance: 0
     });
 
     // Start watching position
-    watchIdRef.current = watchPosition((location) => {
+    const watcherId = watchPosition((location) => {
       setTrackingState(prev => {
-        const lastLoc = lastLocationRef.current;
-        let newDistance = prev.totalDistance;
-        
-        if (lastLoc) {
-          const distance = calculateDistance(lastLoc, location);
-          newDistance += distance;
-        }
-        
-        lastLocationRef.current = location;
-        
+        if (!prev.currentTrip || !prev.currentLocation) return prev;
+
+        const distance = calculateDistance(prev.currentLocation, location);
+        const newDistance = prev.totalDistance + distance;
+
         return {
           ...prev,
           currentLocation: location,
           totalDistance: newDistance,
-          currentTrip: prev.currentTrip ? {
+          currentTrip: {
             ...prev.currentTrip,
             locations: [...(prev.currentTrip.locations || []), location]
-          } : null
+          }
         };
       });
     });
 
+    setPositionWatcher(watcherId);
+
     toast({
       title: "Tracking iniciado!",
-      description: "Começando a monitorar sua viagem.",
+      description: "Começando a monitorar sua viagem."
     });
   };
 
   const stopTracking = async () => {
-    if (watchIdRef.current) {
-      navigator.geolocation.clearWatch(watchIdRef.current);
-      watchIdRef.current = null;
+    if (!trackingState.isTracking || !trackingState.currentTrip || !trackingState.currentLocation) return;
+
+    // Clear position watcher
+    if (positionWatcher) {
+      navigator.geolocation.clearWatch(positionWatcher);
+      setPositionWatcher(null);
     }
 
-    if (!trackingState.currentTrip) return;
-
+    const endTime = new Date();
     const endKm = trackingState.startKm + trackingState.totalDistance;
-    const fuelConsumed = trackingState.totalDistance / 10; // 10 km/L
-    const averageConsumption = trackingState.totalDistance / fuelConsumed;
+    const fuelConsumed = trackingState.totalDistance * FUEL_EFFICIENCY; // L/100km
+    const averageConsumption = fuelConsumed > 0 ? (fuelConsumed / trackingState.totalDistance) * 100 : 0;
 
-    const completedTrip: Trip = {
-      ...trackingState.currentTrip as Trip,
+    const completedTrip = {
+      ...trackingState.currentTrip,
+      id: crypto.randomUUID(),
       endKm,
       kmTraveled: trackingState.totalDistance,
       fuelConsumed,
       averageConsumption,
-      endTime: new Date()
+      endTime,
+      locations: trackingState.currentTrip.locations || []
     };
 
     try {
-      await saveTrip(completedTrip);
+      await saveTrip(completedTrip as any);
       
+      toast({
+        title: "Percurso finalizado!",
+        description: `${trackingState.totalDistance.toFixed(1)}km percorridos. Combustível: ${fuelConsumed.toFixed(2)}L`,
+      });
+
+      // Reset tracking state
       setTrackingState({
         isTracking: false,
         currentTrip: null,
         startKm: endKm,
         currentLocation: null,
-        totalDistance: 0
+        totalDistance: 0,
       });
 
-      setStartKmInput(endKm.toFixed(1));
-      lastLocationRef.current = null;
-
-      // Trigger storage event to update other components
-      window.dispatchEvent(new Event('storage'));
-
-      toast({
-        title: "Viagem finalizada!",
-        description: `Percurso de ${trackingState.totalDistance.toFixed(2)} km registrado.`,
-      });
+      // Disparar evento para atualizar outros componentes
+      window.dispatchEvent(new CustomEvent('trip-completed'));
     } catch (error) {
       toast({
-        title: "Erro",
-        description: "Não foi possível salvar a viagem.",
+        title: "Erro ao salvar percurso",
+        description: "Tente novamente.",
         variant: "destructive",
       });
     }
   };
 
+  // Cleanup position watcher on unmount
   useEffect(() => {
     return () => {
-      if (watchIdRef.current) {
-        navigator.geolocation.clearWatch(watchIdRef.current);
+      if (positionWatcher) {
+        navigator.geolocation.clearWatch(positionWatcher);
       }
     };
-  }, []);
+  }, [positionWatcher]);
 
-  if (!user) {
-    return (
-      <Card className="shadow-card-custom">
-        <CardHeader className="bg-gradient-subtle rounded-t-lg">
-          <CardTitle className="flex items-center gap-2">
-            <Gauge className="w-5 h-5 text-primary" />
-            Controle de Quilometragem
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-6 text-center">
-          <p className="text-muted-foreground mb-4">
-            Faça login para começar a rastrear suas viagens
-          </p>
-          <Button onClick={() => window.location.href = '/auth'}>
-            Fazer Login
-          </Button>
-        </CardContent>
-      </Card>
-    );
-  }
+  // Update locations array when current location changes
+  useEffect(() => {
+    if (trackingState.isTracking && trackingState.currentLocation && trackingState.currentTrip) {
+      setTrackingState(prev => ({
+        ...prev,
+        currentTrip: prev.currentTrip ? {
+          ...prev.currentTrip,
+          locations: prev.currentTrip.locations || []
+        } : null
+      }));
+    }
+  }, [trackingState.currentLocation, trackingState.isTracking]);
 
   return (
-    <Card className="shadow-card-custom">
-      <CardHeader className="bg-gradient-subtle rounded-t-lg">
+    <Card className="w-full shadow-card-custom">
+      <CardHeader className="bg-gradient-automotive text-primary-foreground">
         <CardTitle className="flex items-center gap-2">
-          <Gauge className="w-5 h-5 text-primary" />
+          <Gauge className="h-5 w-5" />
           Controle de Quilometragem
         </CardTitle>
       </CardHeader>
-      <CardContent className="p-6 space-y-4">
+      <CardContent className="p-6">
         {!trackingState.isTracking ? (
           <div className="space-y-4">
             <div>
-              <label className="text-sm font-medium text-muted-foreground mb-2 block">
+              <Label htmlFor="startKm" className="text-sm font-medium mb-2 block">
                 KM inicial do carro
-              </label>
+              </Label>
               <Input
+                id="startKm"
                 type="number"
                 placeholder="Ex: 150000"
-                value={startKmInput}
-                onChange={(e) => setStartKmInput(e.target.value)}
+                value={trackingState.startKm}
+                onChange={(e) => setTrackingState(prev => ({ 
+                  ...prev, 
+                  startKm: parseFloat(e.target.value) || 0 
+                }))}
                 className="text-lg"
               />
             </div>
             <Button 
               onClick={startTracking} 
-              variant="automotive"
+              className="w-full bg-primary hover:bg-primary/90" 
               size="lg"
             >
-              <Play className="w-4 h-4 mr-2" />
+              <Play className="mr-2 h-4 w-4" />
               Iniciar Tracking
             </Button>
           </div>
         ) : (
           <div className="space-y-4">
+            {/* Statistics */}
             <div className="grid grid-cols-2 gap-4">
               <div className="text-center p-3 bg-muted rounded-lg">
                 <div className="text-2xl font-bold text-primary">
@@ -251,12 +224,13 @@ export function KmTracker() {
               </div>
               <div className="text-center p-3 bg-muted rounded-lg">
                 <div className="text-2xl font-bold text-success">
-                  {(trackingState.totalDistance / 10).toFixed(2)}L
+                  {(trackingState.totalDistance * FUEL_EFFICIENCY).toFixed(2)}L
                 </div>
                 <div className="text-xs text-muted-foreground">Combustível</div>
               </div>
             </div>
 
+            {/* Status badges */}
             <div className="flex items-center justify-center gap-4 p-4 bg-gradient-eco/10 rounded-lg">
               <Badge variant="outline" className="gap-1">
                 <MapPin className="w-3 h-3" />
@@ -268,18 +242,22 @@ export function KmTracker() {
               </Badge>
             </div>
 
-            <MapComponent 
-              currentLocation={trackingState.currentLocation}
-              locations={trackingState.currentTrip?.locations || []}
-            />
+            {/* Map */}
+            {trackingState.currentLocation && (
+              <MapComponent 
+                currentLocation={trackingState.currentLocation}
+                locations={trackingState.currentTrip?.locations || []}
+              />
+            )}
 
+            {/* Stop button */}
             <Button 
               onClick={stopTracking}
               variant="destructive"
               className="w-full"
               size="lg"
             >
-              <Square className="w-4 h-4 mr-2" />
+              <Square className="mr-2 h-4 w-4" />
               Finalizar Percurso
             </Button>
           </div>
@@ -287,4 +265,6 @@ export function KmTracker() {
       </CardContent>
     </Card>
   );
-}
+};
+
+export default KmTracker;

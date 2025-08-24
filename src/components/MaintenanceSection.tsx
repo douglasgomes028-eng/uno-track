@@ -1,54 +1,71 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useState, useEffect } from 'react';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { Wrench, AlertTriangle, CheckCircle, Clock } from 'lucide-react';
-import { calculateMaintenanceStatus } from '@/utils/storage';
+import { Wrench, AlertTriangle, CheckCircle2, Clock } from 'lucide-react';
 import { MaintenanceItem } from '@/types/tracking';
-import { useState, useEffect } from 'react';
-import { useAuth } from '@/components/AuthProvider';
+import { calculateMaintenanceStatus } from '@/utils/localStorageDB';
+import { Progress } from '@/components/ui/progress';
 
-export function MaintenanceSection() {
-  const { user } = useAuth();
+const MaintenanceSection = () => {
   const [maintenanceItems, setMaintenanceItems] = useState<MaintenanceItem[]>([]);
 
-  useEffect(() => {
-    const updateMaintenance = async () => {
-      if (!user) return;
-      
-      try {
-        const items = await calculateMaintenanceStatus();
-        setMaintenanceItems(items);
-      } catch (error) {
-        console.error('Error loading maintenance data:', error);
-      }
-    };
-
-    updateMaintenance();
-    
-    // Listen for storage changes to update maintenance status
-    window.addEventListener('storage', updateMaintenance);
-    
-    return () => window.removeEventListener('storage', updateMaintenance);
-  }, [user]);
-
-  const getStatusIcon = (item: MaintenanceItem) => {
-    if (item.isOverdue) {
-      return <AlertTriangle className="w-4 h-4 text-destructive" />;
-    } else if (item.kmRemaining <= 500) {
-      return <Clock className="w-4 h-4 text-warning" />;
+  const loadMaintenanceStatus = async () => {
+    try {
+      const items = await calculateMaintenanceStatus();
+      setMaintenanceItems(items);
+    } catch (error) {
+      console.error('Erro ao carregar status de manutenção:', error);
     }
-    return <CheckCircle className="w-4 h-4 text-success" />;
   };
 
-  const getStatusBadge = (item: MaintenanceItem) => {
+  useEffect(() => {
+    loadMaintenanceStatus();
+
+    // Listen for storage changes and trip completion
+    const handleStorageChange = () => {
+      loadMaintenanceStatus();
+    };
+
+    const handleTripCompleted = () => {
+      setTimeout(loadMaintenanceStatus, 100); // Small delay to ensure data is saved
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('local-storage-updated', handleStorageChange);
+    window.addEventListener('trip-completed', handleTripCompleted);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('local-storage-updated', handleStorageChange);
+      window.removeEventListener('trip-completed', handleTripCompleted);
+    };
+  }, []);
+
+  const getMaintenanceStatus = (item: MaintenanceItem & { needsAttention?: boolean }) => {
     if (item.isOverdue) {
-      return <Badge variant="destructive">Atrasada</Badge>;
-    } else if (item.kmRemaining <= 500) {
-      return <Badge className="bg-warning text-warning-foreground">Próxima</Badge>;
-    } else if (getProgressValue(item) >= 80) {
-      return <Badge variant="destructive">Revisar</Badge>;
+      return {
+        label: 'Vencida',
+        variant: 'destructive' as const,
+        icon: AlertTriangle,
+        color: 'text-destructive'
+      };
     }
-    return <Badge className="bg-success text-success-foreground">Em dia</Badge>;
+
+    if (item.needsAttention) { // 80% threshold
+      return {
+        label: 'Revisar',
+        variant: 'destructive' as const, // Using destructive for red color
+        icon: Clock,
+        color: 'text-destructive'
+      };
+    }
+
+    return {
+      label: 'Em dia',
+      variant: 'default' as const,
+      icon: CheckCircle2,
+      color: 'text-success'
+    };
   };
 
   const getProgressValue = (item: MaintenanceItem) => {
@@ -56,34 +73,16 @@ export function MaintenanceSection() {
     return Math.min(100, Math.max(0, progress));
   };
 
-  if (!user) {
-    return (
-      <Card className="shadow-card-custom">
-        <CardHeader className="bg-gradient-subtle rounded-t-lg">
-          <CardTitle className="flex items-center gap-2">
-            <Wrench className="w-5 h-5 text-primary" />
-            Manutenção Preventiva - Fiat Uno 1991
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-6 text-center">
-          <p className="text-muted-foreground">
-            Faça login para acompanhar a manutenção do seu veículo
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
-
   return (
-    <Card className="shadow-card-custom">
-      <CardHeader className="bg-gradient-subtle rounded-t-lg">
+    <Card className="w-full shadow-card-custom">
+      <CardHeader className="bg-gradient-automotive text-primary-foreground">
         <CardTitle className="flex items-center gap-2">
-          <Wrench className="w-5 h-5 text-primary" />
+          <Wrench className="h-5 w-5" />
           Manutenção Preventiva - Fiat Uno 1991
         </CardTitle>
       </CardHeader>
       <CardContent className="p-6">
-        <div className="mb-4 p-4 bg-primary/5 rounded-lg border border-primary/20">
+        <div className="mb-6 p-4 bg-primary/10 rounded-lg border border-primary/20">
           <h4 className="font-semibold text-primary mb-2">Recomendações da Fábrica</h4>
           <p className="text-sm text-muted-foreground">
             Baseado nas especificações oficiais do Fiat Uno 1991 Motor Fiasa 1.0.
@@ -92,41 +91,48 @@ export function MaintenanceSection() {
         </div>
 
         <div className="space-y-4">
-          {maintenanceItems.map((item) => (
-            <div key={item.name} className="p-4 border rounded-lg hover:bg-muted/30 transition-colors">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  {getStatusIcon(item)}
-                  <h4 className="font-medium">{item.name}</h4>
+          {maintenanceItems.map((item) => {
+            const status = getMaintenanceStatus(item);
+            const StatusIcon = status.icon;
+            
+            return (
+              <div key={item.name} className="p-4 border rounded-lg hover:bg-muted/30 transition-colors">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <StatusIcon className={`w-4 h-4 ${status.color}`} />
+                    <h4 className="font-medium">{item.name}</h4>
+                  </div>
+                  <Badge variant={status.variant}>
+                    {status.label}
+                  </Badge>
                 </div>
-                {getStatusBadge(item)}
-              </div>
 
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">
-                    A cada {item.intervalKm.toLocaleString()} km
-                  </span>
-                  <span className="font-medium">
-                    {item.kmRemaining > 0 
-                      ? `Faltam ${item.kmRemaining.toFixed(0)} km`
-                      : `Atrasada ${Math.abs(item.kmRemaining).toFixed(0)} km`
-                    }
-                  </span>
-                </div>
-                
-                <Progress 
-                  value={getProgressValue(item)} 
-                  className="h-2"
-                />
-                
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>Última: {item.lastKm.toLocaleString()} km</span>
-                  <span>Próxima: {item.nextKm.toLocaleString()} km</span>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">
+                      A cada {item.intervalKm.toLocaleString()} km
+                    </span>
+                    <span className="font-medium">
+                      {item.kmRemaining > 0 
+                        ? `Faltam ${item.kmRemaining.toFixed(0)} km`
+                        : `Atrasada ${Math.abs(item.kmRemaining).toFixed(0)} km`
+                      }
+                    </span>
+                  </div>
+                  
+                  <Progress 
+                    value={getProgressValue(item)} 
+                    className="h-2"
+                  />
+                  
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>Última: {item.lastKm.toLocaleString()} km</span>
+                    <span>Próxima: {item.nextKm.toLocaleString()} km</span>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         <div className="mt-6 p-4 bg-muted/50 rounded-lg">
@@ -142,4 +148,6 @@ export function MaintenanceSection() {
       </CardContent>
     </Card>
   );
-}
+};
+
+export default MaintenanceSection;
