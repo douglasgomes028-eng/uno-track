@@ -313,18 +313,21 @@ const KmTracker = () => {
   }, [trackingState.currentLocation, trackingState.isTracking]);
 
   return (
-    <Card className="w-full shadow-card-custom">
-      <CardHeader className="bg-gradient-automotive text-primary-foreground">
-        <CardTitle className="flex items-center gap-2">
-          <Gauge className="h-5 w-5" />
+    <Card className="w-full bg-card/50 backdrop-blur-sm border-0 shadow-lg">
+      <CardHeader className="bg-gradient-to-r from-primary to-primary-glow text-primary-foreground rounded-t-lg">
+        <CardTitle className="flex items-center gap-3 text-lg">
+          <div className="p-2 bg-white/20 rounded-lg">
+            <Gauge className="h-5 w-5" />
+          </div>
           Controle de Quilometragem
         </CardTitle>
       </CardHeader>
-      <CardContent className="p-6">
+      <CardContent className="p-6 space-y-6">
         {!trackingState.isTracking && !trackingState.plannedRoute ? (
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="startKm" className="text-sm font-medium mb-2 block">
+          <div className="space-y-6">
+            <div className="bg-gradient-to-br from-muted/50 to-muted/20 p-4 rounded-xl border border-border/50">
+              <Label htmlFor="startKm" className="text-sm font-semibold mb-3 block flex items-center gap-2">
+                <div className="w-2 h-2 bg-primary rounded-full"></div>
                 KM inicial do carro
               </Label>
               <Input
@@ -336,12 +339,13 @@ const KmTracker = () => {
                   ...prev, 
                   startKm: parseFloat(e.target.value) || 0 
                 }))}
-                className="text-lg"
+                className="text-lg h-12 bg-background/80 border-border/50 focus:border-primary transition-colors"
               />
             </div>
             
-            <div>
-              <Label htmlFor="destination" className="text-sm font-medium mb-2 block">
+            <div className="bg-gradient-to-br from-muted/50 to-muted/20 p-4 rounded-xl border border-border/50">
+              <Label htmlFor="destination" className="text-sm font-semibold mb-3 block flex items-center gap-2">
+                <div className="w-2 h-2 bg-success rounded-full"></div>
                 Destino (opcional - para planejamento de rota)
               </Label>
               <Input
@@ -350,17 +354,17 @@ const KmTracker = () => {
                 placeholder="Ex: Rua das Flores, 123, São Paulo"
                 value={destinationAddress}
                 onChange={(e) => setDestinationAddress(e.target.value)}
-                className="text-lg"
+                className="text-lg h-12 bg-background/80 border-border/50 focus:border-primary transition-colors"
               />
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex gap-3">
               {destinationAddress.trim() && (
                 <Button 
                   onClick={planRoute}
                   disabled={trackingState.routePlanning}
                   variant="outline"
-                  className="flex-1"
+                  className="flex-1 h-12 bg-background/50 hover:bg-muted/80 border-border/50 transition-all duration-200"
                 >
                   <RouteIcon className="mr-2 h-4 w-4" />
                   {trackingState.routePlanning ? "Calculando..." : "Planejar Rota"}
@@ -368,7 +372,7 @@ const KmTracker = () => {
               )}
               <Button 
                 onClick={startTracking} 
-                className="flex-1 bg-primary hover:bg-primary/90" 
+                className="flex-1 h-12 bg-gradient-to-r from-primary to-primary-glow hover:shadow-lg hover:scale-[1.02] transition-all duration-200" 
                 size="lg"
               >
                 <Play className="mr-2 h-4 w-4" />
@@ -377,40 +381,47 @@ const KmTracker = () => {
             </div>
           </div>
         ) : !trackingState.isTracking && trackingState.plannedRoute ? (
-          <div className="space-y-4">
-            <div className="p-4 bg-muted rounded-lg">
-              <h3 className="font-semibold text-sm text-primary mb-2">Rota Planejada</h3>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="text-muted-foreground">Distância:</span>
-                  <div className="font-medium">{trackingState.plannedRoute.distance.toFixed(1)} km</div>
+          <div className="space-y-6">
+            <div className="bg-gradient-to-br from-success/10 to-success/5 p-6 rounded-xl border border-success/20">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="p-2 bg-success/20 rounded-lg">
+                  <RouteIcon className="h-4 w-4 text-success" />
                 </div>
-                <div>
-                  <span className="text-muted-foreground">Tempo estimado:</span>
-                  <div className="font-medium">{Math.round(trackingState.plannedRoute.duration)} min</div>
+                <h3 className="font-semibold text-success">Rota Planejada</h3>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-background/50 p-3 rounded-lg">
+                  <span className="text-xs text-muted-foreground block mb-1">Distância</span>
+                  <div className="font-bold text-lg text-foreground">{trackingState.plannedRoute.distance.toFixed(1)} km</div>
                 </div>
-                <div>
-                  <span className="text-muted-foreground">Combustível estimado:</span>
-                  <div className="font-medium text-success">{(trackingState.plannedRoute.distance * FUEL_EFFICIENCY).toFixed(2)}L</div>
+                <div className="bg-background/50 p-3 rounded-lg">
+                  <span className="text-xs text-muted-foreground block mb-1">Tempo estimado</span>
+                  <div className="font-bold text-lg text-foreground">{Math.round(trackingState.plannedRoute.duration)} min</div>
                 </div>
-                <div>
-                  <span className="text-muted-foreground">Destino:</span>
-                  <div className="font-medium truncate">{destinationAddress}</div>
+                <div className="bg-background/50 p-3 rounded-lg">
+                  <span className="text-xs text-muted-foreground block mb-1">Combustível</span>
+                  <div className="font-bold text-lg text-success">{(trackingState.plannedRoute.distance * FUEL_EFFICIENCY).toFixed(2)}L</div>
+                </div>
+                <div className="bg-background/50 p-3 rounded-lg">
+                  <span className="text-xs text-muted-foreground block mb-1">Destino</span>
+                  <div className="font-semibold text-sm truncate text-foreground">{destinationAddress}</div>
                 </div>
               </div>
             </div>
 
             {/* Map with planned route */}
             {trackingState.currentLocation && (
-              <MapComponent 
-                currentLocation={trackingState.currentLocation}
-                locations={[]}
-                plannedRoute={trackingState.plannedRoute}
-                destination={trackingState.destination}
-              />
+              <div className="rounded-xl overflow-hidden border border-border/50">
+                <MapComponent 
+                  currentLocation={trackingState.currentLocation}
+                  locations={[]}
+                  plannedRoute={trackingState.plannedRoute}
+                  destination={trackingState.destination}
+                />
+              </div>
             )}
 
-            <div className="flex gap-2">
+            <div className="flex gap-3">
               <Button 
                 onClick={() => setTrackingState(prev => ({ 
                   ...prev, 
@@ -418,13 +429,13 @@ const KmTracker = () => {
                   destination: null 
                 }))}
                 variant="outline"
-                className="flex-1"
+                className="flex-1 h-12 bg-background/50 hover:bg-muted/80 border-border/50 transition-all duration-200"
               >
                 Nova Rota
               </Button>
               <Button 
                 onClick={startTracking} 
-                className="flex-1 bg-primary hover:bg-primary/90" 
+                className="flex-1 h-12 bg-gradient-to-r from-primary to-primary-glow hover:shadow-lg hover:scale-[1.02] transition-all duration-200" 
                 size="lg"
               >
                 <Navigation className="mr-2 h-4 w-4" />
@@ -433,50 +444,52 @@ const KmTracker = () => {
             </div>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-6">
             {/* Statistics */}
             <div className="grid grid-cols-2 gap-4">
-              <div className="text-center p-3 bg-muted rounded-lg">
-                <div className="text-2xl font-bold text-primary">
+              <div className="text-center p-4 bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl border border-primary/20">
+                <div className="text-3xl font-bold text-primary mb-1">
                   {trackingState.totalDistance.toFixed(2)}
                 </div>
-                <div className="text-xs text-muted-foreground">KM Percorridos</div>
+                <div className="text-sm text-muted-foreground font-medium">KM Percorridos</div>
               </div>
-              <div className="text-center p-3 bg-muted rounded-lg">
-                <div className="text-2xl font-bold text-success">
+              <div className="text-center p-4 bg-gradient-to-br from-success/10 to-success/5 rounded-xl border border-success/20">
+                <div className="text-3xl font-bold text-success mb-1">
                   {(trackingState.totalDistance * FUEL_EFFICIENCY).toFixed(2)}L
                 </div>
-                <div className="text-xs text-muted-foreground">Combustível</div>
+                <div className="text-sm text-muted-foreground font-medium">Combustível</div>
               </div>
             </div>
 
             {/* Status badges */}
-            <div className="flex items-center justify-center gap-4 p-4 bg-gradient-eco/10 rounded-lg">
-              <Badge variant="outline" className="gap-1">
-                <MapPin className="w-3 h-3" />
+            <div className="flex items-center justify-center gap-4 p-4 bg-gradient-to-r from-muted/40 to-muted/20 rounded-xl border border-border/50">
+              <Badge variant="outline" className="gap-2 px-3 py-1 bg-background/80 border-primary/30">
+                <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
                 GPS Ativo
               </Badge>
-              <Badge variant="outline" className="gap-1">
-                <Clock className="w-3 h-3" />
+              <Badge variant="outline" className="gap-2 px-3 py-1 bg-background/80 border-success/30">
+                <Clock className="w-3 h-3 text-success" />
                 Em andamento
               </Badge>
             </div>
 
             {/* Map */}
             {trackingState.currentLocation && (
-              <MapComponent 
-                currentLocation={trackingState.currentLocation}
-                locations={trackingState.currentTrip?.locations || []}
-                plannedRoute={trackingState.plannedRoute}
-                destination={trackingState.destination}
-              />
+              <div className="rounded-xl overflow-hidden border border-border/50 shadow-md">
+                <MapComponent 
+                  currentLocation={trackingState.currentLocation}
+                  locations={trackingState.currentTrip?.locations || []}
+                  plannedRoute={trackingState.plannedRoute}
+                  destination={trackingState.destination}
+                />
+              </div>
             )}
 
             {/* Stop button */}
             <Button 
               onClick={stopTracking}
               variant="destructive"
-              className="w-full"
+              className="w-full h-12 bg-gradient-to-r from-destructive to-destructive/90 hover:shadow-lg hover:scale-[1.02] transition-all duration-200"
               size="lg"
             >
               <Square className="mr-2 h-4 w-4" />

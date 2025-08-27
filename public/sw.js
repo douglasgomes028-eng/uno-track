@@ -1,4 +1,4 @@
-const CACHE_NAME = 'uno-track-v1';
+const CACHE_NAME = 'uno-track-v2';
 const urlsToCache = [
   '/',
   '/manifest.json',
@@ -19,18 +19,28 @@ self.addEventListener('install', event => {
 
 self.addEventListener('fetch', event => {
   event.respondWith(
-    caches.match(event.request)
+    fetch(event.request)
       .then(response => {
-        // Return cache first, then network
-        if (response) {
-          return response;
-        }
-        return fetch(event.request).catch(() => {
-          // Fallback for offline
-          if (event.request.destination === 'document') {
-            return caches.match('/');
-          }
-        });
+        // Always try network first, then cache
+        const responseClone = response.clone();
+        caches.open(CACHE_NAME)
+          .then(cache => {
+            cache.put(event.request, responseClone);
+          });
+        return response;
+      })
+      .catch(() => {
+        // Fallback to cache if network fails
+        return caches.match(event.request)
+          .then(response => {
+            if (response) {
+              return response;
+            }
+            // Final fallback for documents
+            if (event.request.destination === 'document') {
+              return caches.match('/');
+            }
+          });
       })
   );
 });

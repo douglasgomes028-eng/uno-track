@@ -54,6 +54,7 @@ All colors MUST be HSL.
     /* Shadows */
     --shadow-automotive: 0 10px 30px -10px hsl(215 100% 50% / 0.3);
     --shadow-card: 0 4px 20px -4px hsl(215 25% 25% / 0.1);
+    --shadow-card-custom: 0 8px 32px -8px hsl(215 25% 25% / 0.15);
     --shadow-glow: 0 0 40px hsl(215 80% 60% / 0.4);
 
     /* Animations */
