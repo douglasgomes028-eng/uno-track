@@ -26,10 +26,20 @@ export interface MaintenanceItem {
   needsAttention?: boolean;
 }
 
+export interface Route {
+  coordinates: [number, number][];
+  distance: number;
+  duration: number;
+  geometry: string;
+}
+
 export interface TrackingState {
   isTracking: boolean;
   currentTrip: Partial<Trip> | null;
   startKm: number;
   currentLocation: Location | null;
   totalDistance: number;
+  plannedRoute: Route | null;
+  destination: Location | null;
+  routePlanning: boolean;
 }
