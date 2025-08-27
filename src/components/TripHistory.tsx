@@ -135,8 +135,10 @@ const TripHistory = () => {
               {trips.map((trip, index) => (
                 <div key={trip.id} className="p-4 border rounded-lg hover:bg-muted/50 transition-colors">
                   <div className="flex items-center justify-between mb-2">
-                    <Badge variant={index === 0 ? "default" : "secondary"}>
-                      {index === 0 ? "Último percurso" : `Percurso #${trips.length - index}`}
+                    <Badge variant={index === trips.length - 1 ? "default" : "secondary"}>
+                      {index === trips.length - 1 ? "Primeiro Registro" : 
+                       index === 0 ? "Último percurso" : 
+                       `Percurso ${trips.length - index}`}
                     </Badge>
                     <div className="text-sm text-muted-foreground flex items-center gap-1">
                       <Clock className="w-3 h-3" />

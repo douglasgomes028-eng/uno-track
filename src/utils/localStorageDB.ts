@@ -50,6 +50,13 @@ export async function getTotalKm(): Promise<number> {
   return trips.reduce((max, trip) => Math.max(max, trip.endKm), 0);
 }
 
+export async function getTotalKmTraveled(): Promise<number> {
+  const trips = await getTrips();
+  if (trips.length === 0) return 0;
+  
+  return trips.reduce((sum, trip) => sum + trip.kmTraveled, 0);
+}
+
 export async function getLastKm(): Promise<number> {
   try {
     const lastKm = localStorage.getItem(STORAGE_KEYS.LAST_KM);
@@ -62,7 +69,7 @@ export async function getLastKm(): Promise<number> {
 }
 
 export async function calculateMaintenanceStatus(): Promise<MaintenanceItem[]> {
-  const totalKm = await getTotalKm();
+  const totalKmTraveled = await getTotalKmTraveled();
   
   const maintenanceItems = [
     { name: 'Troca de óleo', intervalKm: 5000 },
@@ -72,16 +79,13 @@ export async function calculateMaintenanceStatus(): Promise<MaintenanceItem[]> {
   ];
 
   return maintenanceItems.map(item => {
-    const completedIntervals = Math.floor(totalKm / item.intervalKm);
-    const lastKm = completedIntervals * item.intervalKm;
-    const nextKm = lastKm + item.intervalKm;
-    const kmRemaining = nextKm - totalKm;
-    const percentageUsed = ((totalKm - lastKm) / item.intervalKm) * 100;
+    const kmRemaining = item.intervalKm - totalKmTraveled;
+    const percentageUsed = (totalKmTraveled / item.intervalKm) * 100;
     
     return {
       ...item,
-      lastKm,
-      nextKm,
+      lastKm: 0,
+      nextKm: item.intervalKm,
       kmRemaining,
       isOverdue: kmRemaining <= 0,
       needsAttention: percentageUsed >= 80 // 80% threshold
