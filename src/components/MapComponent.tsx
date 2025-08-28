@@ -1,12 +1,10 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { Location, Route } from '@/types/tracking';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
-import { Map, Key } from 'lucide-react';
+import { Map } from 'lucide-react';
 
 interface MapComponentProps {
   currentLocation: Location | null;
@@ -19,41 +17,27 @@ export function MapComponent({ currentLocation, locations, plannedRoute, destina
   const { toast } = useToast();
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
-  const [mapboxToken, setMapboxToken] = useState('');
-  const [showTokenInput, setShowTokenInput] = useState(true);
+  // Use the provided token directly
+  const mapboxToken = 'pk.eyJ1IjoiZG91Z2xhc2dvbWVzMDI4IiwiYSI6ImNtZXVtOW5iYjA3ejAya3B4ODhvamZoMzYifQ.h-NWNQ0c1zOTZXkZXkUiHg';
   const markerRef = useRef<mapboxgl.Marker | null>(null);
   const destinationMarkerRef = useRef<mapboxgl.Marker | null>(null);
 
-  const initializeMap = () => {
-    if (!mapboxToken.trim()) {
-      toast({
-        title: "Token inválido",
-        description: "Por favor, insira um token válido do Mapbox.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    // Store token for later use
-    localStorage.setItem('mapbox_token', mapboxToken);
+  // Initialize map automatically when component mounts
+  useEffect(() => {
     mapboxgl.accessToken = mapboxToken;
     
-    // Use setTimeout to ensure the container is ready
-    setTimeout(() => {
-      if (!mapContainer.current) {
-        console.error('Container do mapa não está disponível');
-        return;
-      }
+    const initMap = () => {
+      if (!mapContainer.current || map.current) return;
 
       const initialLocation = currentLocation || { lat: -15.7942, lng: -47.8822 }; // Brasília default
 
       try {
         map.current = new mapboxgl.Map({
           container: mapContainer.current,
-          style: 'mapbox://styles/mapbox/streets-v12', // Melhor estilo similar ao Google Maps
+          style: 'mapbox://styles/mapbox/streets-v12',
           center: [initialLocation.lng, initialLocation.lat],
-          zoom: 17, // Zoom mais próximo para melhor visualização
-          pitch: 0, // Vista de cima como Google Maps
+          zoom: 17,
+          pitch: 0,
           bearing: 0
         });
 
@@ -67,7 +51,7 @@ export function MapComponent({ currentLocation, locations, plannedRoute, destina
           'top-right'
         );
 
-        // Add geolocation control (botão para centralizar na localização atual)
+        // Add geolocation control
         map.current.addControl(
           new mapboxgl.GeolocateControl({
             positionOptions: {
@@ -78,8 +62,6 @@ export function MapComponent({ currentLocation, locations, plannedRoute, destina
           }),
           'top-right'
         );
-
-        setShowTokenInput(false);
         
         toast({
           title: "Mapa inicializado!",
@@ -89,62 +71,17 @@ export function MapComponent({ currentLocation, locations, plannedRoute, destina
         console.error('Erro ao inicializar mapa:', error);
         toast({
           title: "Erro na inicialização",
-          description: "Verifique se o token está correto e tente novamente.",
+          description: "Verifique sua conexão com a internet.",
           variant: "destructive"
         });
       }
-    }, 100);
-  };
+    };
 
-  // Check if token exists in localStorage
-  useEffect(() => {
-    const savedToken = localStorage.getItem('mapbox_token');
-    if (savedToken) {
-      setMapboxToken(savedToken);
-      setShowTokenInput(false);
-      // Auto-initialize if we have current location
-      if (currentLocation) {
-        setTimeout(() => {
-          mapboxgl.accessToken = savedToken;
-          
-          const initialLocation = currentLocation || { lat: -15.7942, lng: -47.8822 };
+    // Initialize map with a small delay to ensure container is ready
+    setTimeout(initMap, 100);
+  }, []);
 
-          if (mapContainer.current && !map.current) {
-            map.current = new mapboxgl.Map({
-              container: mapContainer.current,
-              style: 'mapbox://styles/mapbox/streets-v12',
-              center: [initialLocation.lng, initialLocation.lat],
-              zoom: 17,
-              pitch: 0,
-              bearing: 0
-            });
-
-            // Add navigation controls
-            map.current.addControl(
-              new mapboxgl.NavigationControl({
-                visualizePitch: true,
-                showZoom: true,
-                showCompass: true
-              }),
-              'top-right'
-            );
-
-            // Add geolocation control
-            map.current.addControl(
-              new mapboxgl.GeolocateControl({
-                positionOptions: {
-                  enableHighAccuracy: true
-                },
-                trackUserLocation: true,
-                showUserHeading: true
-              }),
-              'top-right'
-            );
-          }
-        }, 100);
-      }
-    }
-  }, [currentLocation]);
+  // Remove the old initializeMap function and useEffect
 
   useEffect(() => {
     if (map.current && currentLocation) {
@@ -342,39 +279,6 @@ export function MapComponent({ currentLocation, locations, plannedRoute, destina
       }
     };
   }, []);
-
-  if (showTokenInput) {
-    return (
-      <Card className="shadow-card-custom">
-        <CardHeader className="bg-gradient-subtle rounded-t-lg">
-          <CardTitle className="flex items-center gap-2">
-            <Key className="w-5 h-5 text-primary" />
-            Configuração do Mapa
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-6 space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Para visualizar o mapa, insira seu token público do Mapbox. 
-            Acesse <a href="https://mapbox.com/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">mapbox.com</a> para obter seu token.
-          </p>
-          <Input
-            type="password"
-            placeholder="Insira seu token público do Mapbox"
-            value={mapboxToken}
-            onChange={(e) => setMapboxToken(e.target.value)}
-          />
-          <Button 
-            onClick={initializeMap}
-            disabled={!mapboxToken.trim()}
-            className="w-full"
-          >
-            <Map className="w-4 h-4 mr-2" />
-            Inicializar Mapa
-          </Button>
-        </CardContent>
-      </Card>
-    );
-  }
 
   return (
     <Card className="shadow-card-custom">
