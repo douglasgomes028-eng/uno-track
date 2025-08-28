@@ -5,6 +5,7 @@ import { Location, Route } from '@/types/tracking';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { useToast } from '@/components/ui/use-toast';
 import { Map, Key } from 'lucide-react';
 
 interface MapComponentProps {
@@ -15,6 +16,7 @@ interface MapComponentProps {
 }
 
 export function MapComponent({ currentLocation, locations, plannedRoute, destination }: MapComponentProps) {
+  const { toast } = useToast();
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const [mapboxToken, setMapboxToken] = useState('');
@@ -23,47 +25,75 @@ export function MapComponent({ currentLocation, locations, plannedRoute, destina
   const destinationMarkerRef = useRef<mapboxgl.Marker | null>(null);
 
   const initializeMap = () => {
-    if (!mapContainer.current || !mapboxToken) return;
+    if (!mapboxToken.trim()) {
+      toast({
+        title: "Token inválido",
+        description: "Por favor, insira um token válido do Mapbox.",
+        variant: "destructive"
+      });
+      return;
+    }
 
-    mapboxgl.accessToken = mapboxToken;
-    
     // Store token for later use
     localStorage.setItem('mapbox_token', mapboxToken);
+    mapboxgl.accessToken = mapboxToken;
     
-    const initialLocation = currentLocation || { lat: -15.7942, lng: -47.8822 }; // Brasília default
+    // Use setTimeout to ensure the container is ready
+    setTimeout(() => {
+      if (!mapContainer.current) {
+        console.error('Container do mapa não está disponível');
+        return;
+      }
 
-    map.current = new mapboxgl.Map({
-      container: mapContainer.current,
-      style: 'mapbox://styles/mapbox/streets-v12', // Melhor estilo similar ao Google Maps
-      center: [initialLocation.lng, initialLocation.lat],
-      zoom: 17, // Zoom mais próximo para melhor visualização
-      pitch: 0, // Vista de cima como Google Maps
-      bearing: 0
-    });
+      const initialLocation = currentLocation || { lat: -15.7942, lng: -47.8822 }; // Brasília default
 
-    // Add navigation controls
-    map.current.addControl(
-      new mapboxgl.NavigationControl({
-        visualizePitch: true,
-        showZoom: true,
-        showCompass: true
-      }),
-      'top-right'
-    );
+      try {
+        map.current = new mapboxgl.Map({
+          container: mapContainer.current,
+          style: 'mapbox://styles/mapbox/streets-v12', // Melhor estilo similar ao Google Maps
+          center: [initialLocation.lng, initialLocation.lat],
+          zoom: 17, // Zoom mais próximo para melhor visualização
+          pitch: 0, // Vista de cima como Google Maps
+          bearing: 0
+        });
 
-    // Add geolocation control (botão para centralizar na localização atual)
-    map.current.addControl(
-      new mapboxgl.GeolocateControl({
-        positionOptions: {
-          enableHighAccuracy: true
-        },
-        trackUserLocation: true,
-        showUserHeading: true
-      }),
-      'top-right'
-    );
+        // Add navigation controls
+        map.current.addControl(
+          new mapboxgl.NavigationControl({
+            visualizePitch: true,
+            showZoom: true,
+            showCompass: true
+          }),
+          'top-right'
+        );
 
-    setShowTokenInput(false);
+        // Add geolocation control (botão para centralizar na localização atual)
+        map.current.addControl(
+          new mapboxgl.GeolocateControl({
+            positionOptions: {
+              enableHighAccuracy: true
+            },
+            trackUserLocation: true,
+            showUserHeading: true
+          }),
+          'top-right'
+        );
+
+        setShowTokenInput(false);
+        
+        toast({
+          title: "Mapa inicializado!",
+          description: "Token configurado com sucesso.",
+        });
+      } catch (error) {
+        console.error('Erro ao inicializar mapa:', error);
+        toast({
+          title: "Erro na inicialização",
+          description: "Verifique se o token está correto e tente novamente.",
+          variant: "destructive"
+        });
+      }
+    }, 100);
   };
 
   // Check if token exists in localStorage
