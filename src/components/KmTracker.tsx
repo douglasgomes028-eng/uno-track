@@ -334,10 +334,10 @@ const KmTracker = () => {
                 id="startKm"
                 type="number"
                 placeholder="Ex: 150000"
-                value={trackingState.startKm}
+                value={trackingState.startKm === 0 ? '' : trackingState.startKm}
                 onChange={(e) => setTrackingState(prev => ({ 
                   ...prev, 
-                  startKm: parseFloat(e.target.value) || 0 
+                  startKm: e.target.value === '' ? 0 : parseFloat(e.target.value) || 0
                 }))}
                 className="text-lg h-12 bg-background/80 border-border/50 focus:border-primary transition-colors"
               />

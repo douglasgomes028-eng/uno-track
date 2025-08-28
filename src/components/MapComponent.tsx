@@ -32,6 +32,10 @@ export function MapComponent({ currentLocation, locations, plannedRoute, destina
       const initialLocation = currentLocation || { lat: -15.7942, lng: -47.8822 }; // Brasília default
 
       try {
+        if (!mapboxgl.accessToken) {
+          throw new Error('Token do Mapbox não configurado');
+        }
+
         map.current = new mapboxgl.Map({
           container: mapContainer.current,
           style: 'mapbox://styles/mapbox/streets-v12',
