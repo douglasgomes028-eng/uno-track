@@ -344,32 +344,18 @@ export function MapComponent({ currentLocation, locations, plannedRoute, destina
   useEffect(() => {
     // If we already have a map and the mode changed (planned route vs no route), reinitialize
     if (map.current && mapContainer.current) {
-      const currentStyle = map.current.getStyle().name;
-      const expectedStyle = plannedRoute ? 'Mapbox Navigation Day' : 'Mapbox Streets';
-      
-      if ((plannedRoute && !currentStyle.includes('Navigation')) || 
-          (!plannedRoute && currentStyle.includes('Navigation'))) {
-        // Clean up current map
-        if (markerRef.current) {
-          markerRef.current.remove();
-          markerRef.current = null;
-        }
-        if (destinationMarkerRef.current) {
-          destinationMarkerRef.current.remove();
-          destinationMarkerRef.current = null;
-        }
+      try {
+        const currentStyle = map.current.getStyle()?.name;
+        const expectedStyle = plannedRoute ? 'Mapbox Navigation Day' : 'Mapbox Streets';
         
-        // Remove and recreate map for mode switch
-        map.current.remove();
-        map.current = null;
-        
-        // Trigger reinitialization
-        setTimeout(() => {
-          if (mapContainer.current && !map.current) {
-            const event = new CustomEvent('reinitializeMap');
-            mapContainer.current.dispatchEvent(event);
-          }
-        }, 100);
+        if ((plannedRoute && currentStyle && !currentStyle.includes('Navigation')) || 
+            (!plannedRoute && currentStyle && currentStyle.includes('Navigation'))) {
+          // Simply change style without recreating map
+          const newStyle = plannedRoute ? 'mapbox://styles/mapbox/navigation-day-v1' : 'mapbox://styles/mapbox/streets-v12';
+          map.current.setStyle(newStyle);
+        }
+      } catch (error) {
+        console.warn('Error changing map style:', error);
       }
     }
   }, [plannedRoute]);

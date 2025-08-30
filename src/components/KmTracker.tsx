@@ -404,7 +404,6 @@ const KmTracker = () => {
             {trackingState.currentLocation && (
               <div className="rounded-xl overflow-hidden border border-border/50">
                 <MapComponent 
-                  key={`map-${trackingState.plannedRoute ? 'route' : 'simple'}`}
                   currentLocation={trackingState.currentLocation}
                   locations={[]}
                   plannedRoute={trackingState.plannedRoute}
