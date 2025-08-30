@@ -17,14 +17,15 @@ export function MapComponent({ currentLocation, locations, plannedRoute, destina
   const { toast } = useToast();
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
-  // Use the provided token directly
-  const mapboxToken = 'pk.eyJ1IjoiZG91Z2xhc2dvbWVzMDI4IiwiYSI6ImNtZXVtOW5iYjA3ejAya3B4ODhvamZoMzYifQ.h-NWNQ0c1zOTZXkZXkUiHg';
   const markerRef = useRef<mapboxgl.Marker | null>(null);
   const destinationMarkerRef = useRef<mapboxgl.Marker | null>(null);
 
+  // Set the token immediately when component loads
+  const mapboxToken = 'pk.eyJ1IjoiZG91Z2xhc2dvbWVzMDI4IiwiYSI6ImNtZXVtOW5iYjA3ejAya3B4ODhvamZoMzYifQ.h-NWNQ0c1zOTZXkZXkUiHg';
+  mapboxgl.accessToken = mapboxToken;
+
   // Initialize map automatically when component mounts
   useEffect(() => {
-    mapboxgl.accessToken = mapboxToken;
     
     const initMap = () => {
       if (!mapContainer.current || map.current) return;

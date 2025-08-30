@@ -97,6 +97,7 @@ const KmTracker = () => {
       }
 
       const currentLocation = await getCurrentLocation();
+      // Use the same token as MapComponent
       const mapboxToken = 'pk.eyJ1IjoiZG91Z2xhc2dvbWVzMDI4IiwiYSI6ImNtZXVtOW5iYjA3ejAya3B4ODhvamZoMzYifQ.h-NWNQ0c1zOTZXkZXkUiHg';
 
       const destination = await geocodeAddress(destinationAddress, mapboxToken);
