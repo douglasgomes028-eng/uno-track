@@ -75,9 +75,9 @@ const MaintenanceSection = () => {
 
   return (
     <Card className="w-full shadow-card-custom">
-      <CardHeader className="bg-gradient-automotive text-primary-foreground">
+      <CardHeader className="bg-gradient-subtle rounded-t-lg">
         <CardTitle className="flex items-center gap-2">
-          <Wrench className="h-5 w-5" />
+          <Wrench className="h-5 w-5 text-primary" />
           Manutenção Preventiva - Fiat Uno 1991
         </CardTitle>
       </CardHeader>

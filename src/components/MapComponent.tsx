@@ -17,15 +17,14 @@ export function MapComponent({ currentLocation, locations, plannedRoute, destina
   const { toast } = useToast();
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
+  // Use the provided token directly
+  const mapboxToken = 'pk.eyJ1IjoiZG91Z2xhc2dvbWVzMDI4IiwiYSI6ImNtZXVtOW5iYjA3ejAya3B4ODhvamZoMzYifQ.h-NWNQ0c1zOTZXkZXkUiHg';
   const markerRef = useRef<mapboxgl.Marker | null>(null);
   const destinationMarkerRef = useRef<mapboxgl.Marker | null>(null);
 
-  // Set the token immediately when component loads
-  const mapboxToken = 'pk.eyJ1IjoiZG91Z2xhc2dvbWVzMDI4IiwiYSI6ImNtZXVtOW5iYjA3ejAya3B4ODhvamZoMzYifQ.h-NWNQ0c1zOTZXkZXkUiHg';
-  mapboxgl.accessToken = mapboxToken;
-
   // Initialize map automatically when component mounts
   useEffect(() => {
+    mapboxgl.accessToken = mapboxToken;
     
     const initMap = () => {
       if (!mapContainer.current || map.current) return;
@@ -33,6 +32,10 @@ export function MapComponent({ currentLocation, locations, plannedRoute, destina
       const initialLocation = currentLocation || { lat: -15.7942, lng: -47.8822 }; // Brasília default
 
       try {
+        if (!mapboxgl.accessToken) {
+          throw new Error('Token do Mapbox não configurado');
+        }
+
         map.current = new mapboxgl.Map({
           container: mapContainer.current,
           style: 'mapbox://styles/mapbox/streets-v12',

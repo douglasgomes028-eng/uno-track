@@ -97,8 +97,17 @@ const KmTracker = () => {
       }
 
       const currentLocation = await getCurrentLocation();
-      // Use the same token as MapComponent
-      const mapboxToken = 'pk.eyJ1IjoiZG91Z2xhc2dvbWVzMDI4IiwiYSI6ImNtZXVtOW5iYjA3ejAya3B4ODhvamZoMzYifQ.h-NWNQ0c1zOTZXkZXkUiHg';
+      const mapboxToken = localStorage.getItem('mapbox_token');
+
+      if (!mapboxToken) {
+        toast({
+          title: "Token necessário",
+          description: "Configure o token do Mapbox para usar o planejamento de rotas.",
+          variant: "destructive"
+        });
+        setTrackingState(prev => ({ ...prev, routePlanning: false }));
+        return;
+      }
 
       const destination = await geocodeAddress(destinationAddress, mapboxToken);
       if (!destination) {
@@ -325,10 +334,10 @@ const KmTracker = () => {
                 id="startKm"
                 type="number"
                 placeholder="Ex: 150000"
-                value={trackingState.startKm}
+                value={trackingState.startKm === 0 ? '' : trackingState.startKm}
                 onChange={(e) => setTrackingState(prev => ({ 
                   ...prev, 
-                  startKm: parseFloat(e.target.value) || 0 
+                  startKm: e.target.value === '' ? 0 : parseFloat(e.target.value) || 0
                 }))}
                 className="text-lg h-12 bg-background/80 border-border/50 focus:border-primary transition-colors"
               />
