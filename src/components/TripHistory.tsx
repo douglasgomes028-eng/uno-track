@@ -83,10 +83,10 @@ const TripHistory = () => {
 
   return (
     <Card className="w-full shadow-card-custom">
-      <CardHeader className="bg-gradient-subtle rounded-t-lg">
+      <CardHeader className="bg-gradient-automotive text-primary-foreground">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
-            <History className="h-5 w-5 text-primary" />
+            <History className="h-5 w-5" />
             Histórico de Percursos
           </CardTitle>
           {trips.length > 0 && (
@@ -94,7 +94,7 @@ const TripHistory = () => {
               variant="outline"
               size="sm"
               onClick={handleClearData}
-              className="text-muted-foreground border-border hover:bg-muted hover:text-foreground"
+              className="text-primary-foreground border-primary-foreground hover:bg-primary-foreground hover:text-primary"
             >
               <Trash2 className="h-4 w-4" />
             </Button>
