@@ -24,9 +24,13 @@ export function MapComponent({ currentLocation, locations, plannedRoute, destina
 
   // Initialize map automatically when component mounts
   useEffect(() => {
+    if (!mapContainer.current) return;
+
+    // Set access token
     mapboxgl.accessToken = mapboxToken;
     
     const initMap = () => {
+      // Double check the container still exists
       if (!mapContainer.current || map.current) return;
 
       const initialLocation = currentLocation || { lat: -15.7942, lng: -47.8822 }; // Brasília default
@@ -38,10 +42,10 @@ export function MapComponent({ currentLocation, locations, plannedRoute, destina
 
         map.current = new mapboxgl.Map({
           container: mapContainer.current,
-          style: 'mapbox://styles/mapbox/streets-v12',
+          style: plannedRoute ? 'mapbox://styles/mapbox/navigation-day-v1' : 'mapbox://styles/mapbox/streets-v12',
           center: [initialLocation.lng, initialLocation.lat],
-          zoom: 17,
-          pitch: 0,
+          zoom: plannedRoute ? 15 : 17,
+          pitch: plannedRoute ? 45 : 0,
           bearing: 0
         });
 
@@ -55,22 +59,40 @@ export function MapComponent({ currentLocation, locations, plannedRoute, destina
           'top-right'
         );
 
-        // Add geolocation control
-        map.current.addControl(
-          new mapboxgl.GeolocateControl({
-            positionOptions: {
-              enableHighAccuracy: true
-            },
-            trackUserLocation: true,
-            showUserHeading: true
-          }),
-          'top-right'
-        );
-        
+        // Add geolocation control for navigation mode
+        if (plannedRoute) {
+          map.current.addControl(
+            new mapboxgl.GeolocateControl({
+              positionOptions: {
+                enableHighAccuracy: true
+              },
+              trackUserLocation: true,
+              showUserHeading: true,
+              fitBoundsOptions: {
+                maxZoom: 18
+              }
+            }),
+            'top-right'
+          );
+        } else {
+          map.current.addControl(
+            new mapboxgl.GeolocateControl({
+              positionOptions: {
+                enableHighAccuracy: true
+              },
+              trackUserLocation: true,
+              showUserHeading: true
+            }),
+            'top-right'
+          );
+        }
+
+        // Success message
         toast({
-          title: "Mapa inicializado!",
-          description: "Token configurado com sucesso.",
+          title: plannedRoute ? "Modo navegação ativo!" : "Mapa inicializado!",
+          description: plannedRoute ? "Rota configurada para navegação" : "Localização ativa",
         });
+
       } catch (error) {
         console.error('Erro ao inicializar mapa:', error);
         toast({
@@ -81,9 +103,25 @@ export function MapComponent({ currentLocation, locations, plannedRoute, destina
       }
     };
 
-    // Initialize map with a small delay to ensure container is ready
-    setTimeout(initMap, 100);
-  }, []);
+    // Add event listener for manual reinitialization
+    const handleReinitialize = () => {
+      initMap();
+    };
+
+    if (mapContainer.current) {
+      mapContainer.current.addEventListener('reinitializeMap', handleReinitialize);
+    }
+
+    // Initialize immediately, no timeout to prevent race conditions
+    initMap();
+
+    // Cleanup event listener
+    return () => {
+      if (mapContainer.current) {
+        mapContainer.current.removeEventListener('reinitializeMap', handleReinitialize);
+      }
+    };
+  }, [mapboxToken, plannedRoute]);
 
   // Remove the old initializeMap function and useEffect
 
@@ -272,17 +310,69 @@ export function MapComponent({ currentLocation, locations, plannedRoute, destina
 
   useEffect(() => {
     return () => {
+      // Cleanup in the correct order
       if (markerRef.current) {
         markerRef.current.remove();
+        markerRef.current = null;
       }
       if (destinationMarkerRef.current) {
         destinationMarkerRef.current.remove();
+        destinationMarkerRef.current = null;
       }
       if (map.current) {
+        // Remove sources and layers before removing map
+        try {
+          if (map.current.getSource('planned-route')) {
+            map.current.removeLayer('planned-route');
+            map.current.removeSource('planned-route');
+          }
+          if (map.current.getSource('travel-route')) {
+            map.current.removeLayer('travel-route');
+            map.current.removeSource('travel-route');
+          }
+        } catch (error) {
+          console.warn('Error cleaning up map layers:', error);
+        }
+        
         map.current.remove();
+        map.current = null;
       }
     };
   }, []);
+
+  // Effect to reinitialize map when switching between modes
+  useEffect(() => {
+    // If we already have a map and the mode changed (planned route vs no route), reinitialize
+    if (map.current && mapContainer.current) {
+      const currentStyle = map.current.getStyle().name;
+      const expectedStyle = plannedRoute ? 'Mapbox Navigation Day' : 'Mapbox Streets';
+      
+      if ((plannedRoute && !currentStyle.includes('Navigation')) || 
+          (!plannedRoute && currentStyle.includes('Navigation'))) {
+        // Clean up current map
+        if (markerRef.current) {
+          markerRef.current.remove();
+          markerRef.current = null;
+        }
+        if (destinationMarkerRef.current) {
+          destinationMarkerRef.current.remove();
+          destinationMarkerRef.current = null;
+        }
+        
+        // Remove and recreate map for mode switch
+        map.current.remove();
+        map.current = null;
+        
+        // Trigger reinitialization
+        setTimeout(() => {
+          if (mapContainer.current && !map.current) {
+            const event = new CustomEvent('reinitializeMap');
+            mapContainer.current.dispatchEvent(event);
+          }
+        }, 100);
+      }
+    }
+  }, [plannedRoute]);
 
   return (
     <Card className="shadow-card-custom">
