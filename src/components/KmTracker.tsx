@@ -97,17 +97,7 @@ const KmTracker = () => {
       }
 
       const currentLocation = await getCurrentLocation();
-      const mapboxToken = localStorage.getItem('mapbox_token');
-
-      if (!mapboxToken) {
-        toast({
-          title: "Token necessário",
-          description: "Configure o token do Mapbox para usar o planejamento de rotas.",
-          variant: "destructive"
-        });
-        setTrackingState(prev => ({ ...prev, routePlanning: false }));
-        return;
-      }
+      const mapboxToken = 'pk.eyJ1IjoiZG91Z2xhc2dvbWVzMDI4IiwiYSI6ImNtZXVtOW5iYjA3ejAya3B4ODhvamZoMzYifQ.h-NWNQ0c1zOTZXkZXkUiHg';
 
       const destination = await geocodeAddress(destinationAddress, mapboxToken);
       if (!destination) {
