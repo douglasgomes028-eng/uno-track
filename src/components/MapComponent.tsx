@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { Location, Route } from '@/types/tracking';
@@ -17,24 +17,28 @@ export function MapComponent({ currentLocation, locations, plannedRoute, destina
   const { toast } = useToast();
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
-  // Use the provided token directly
   const mapboxToken = 'pk.eyJ1IjoiZG91Z2xhc2dvbWVzMDI4IiwiYSI6ImNtZXVtOW5iYjA3ejAya3B4ODhvamZoMzYifQ.h-NWNQ0c1zOTZXkZXkUiHg';
   const markerRef = useRef<mapboxgl.Marker | null>(null);
   const destinationMarkerRef = useRef<mapboxgl.Marker | null>(null);
+  const [mapError, setMapError] = useState<string | null>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
 
-  // Initialize map automatically when component mounts
+  // Initialize map with better error handling
   useEffect(() => {
-    mapboxgl.accessToken = mapboxToken;
+    let timeoutId: NodeJS.Timeout;
     
-    const initMap = () => {
-      if (!mapContainer.current || map.current) return;
-
-      const initialLocation = currentLocation || { lat: -15.7942, lng: -47.8822 }; // Brasília default
+    const initMap = async () => {
+      if (!mapContainer.current || map.current || isInitialized) return;
 
       try {
+        // Set token first
+        mapboxgl.accessToken = mapboxToken;
+        
         if (!mapboxgl.accessToken) {
           throw new Error('Token do Mapbox não configurado');
         }
+
+        const initialLocation = currentLocation || { lat: -15.7942, lng: -47.8822 };
 
         map.current = new mapboxgl.Map({
           container: mapContainer.current,
@@ -42,48 +46,60 @@ export function MapComponent({ currentLocation, locations, plannedRoute, destina
           center: [initialLocation.lng, initialLocation.lat],
           zoom: 17,
           pitch: 0,
-          bearing: 0
+          bearing: 0,
+          attributionControl: false
         });
 
-        // Add navigation controls
-        map.current.addControl(
-          new mapboxgl.NavigationControl({
-            visualizePitch: true,
-            showZoom: true,
-            showCompass: true
-          }),
-          'top-right'
-        );
+        // Wait for map to load before adding controls
+        map.current.on('load', () => {
+          if (!map.current) return;
+          
+          // Add navigation controls
+          map.current.addControl(
+            new mapboxgl.NavigationControl({
+              visualizePitch: true,
+              showZoom: true,
+              showCompass: true
+            }),
+            'top-right'
+          );
 
-        // Add geolocation control
-        map.current.addControl(
-          new mapboxgl.GeolocateControl({
-            positionOptions: {
-              enableHighAccuracy: true
-            },
-            trackUserLocation: true,
-            showUserHeading: true
-          }),
-          'top-right'
-        );
+          // Add geolocation control
+          map.current.addControl(
+            new mapboxgl.GeolocateControl({
+              positionOptions: {
+                enableHighAccuracy: true
+              },
+              trackUserLocation: true,
+              showUserHeading: true
+            }),
+            'top-right'
+          );
+          
+          setIsInitialized(true);
+          setMapError(null);
+        });
+
+        map.current.on('error', (e) => {
+          console.error('Map error:', e);
+          setMapError('Erro ao carregar o mapa');
+        });
         
-        toast({
-          title: "Mapa inicializado!",
-          description: "Token configurado com sucesso.",
-        });
       } catch (error) {
         console.error('Erro ao inicializar mapa:', error);
-        toast({
-          title: "Erro na inicialização",
-          description: "Verifique sua conexão com a internet.",
-          variant: "destructive"
-        });
+        setMapError('Erro ao inicializar o mapa');
       }
     };
 
-    // Initialize map with a small delay to ensure container is ready
-    setTimeout(initMap, 100);
-  }, []);
+    // Initialize map with a delay
+    timeoutId = setTimeout(() => {
+      initMap();
+    }, 100);
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [currentLocation, isInitialized]);
 
   // Remove the old initializeMap function and useEffect
 
@@ -293,8 +309,18 @@ export function MapComponent({ currentLocation, locations, plannedRoute, destina
         </CardTitle>
       </CardHeader>
       <CardContent className="p-0">
-        <div ref={mapContainer} className="w-full h-96 rounded-b-lg" />
-        {(plannedRoute || locations.length > 1) && (
+        {mapError ? (
+          <div className="w-full h-96 flex items-center justify-center bg-muted/20 rounded-b-lg">
+            <div className="text-center p-4">
+              <Map className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">{mapError}</p>
+              <p className="text-xs text-muted-foreground mt-1">Verifique sua conexão</p>
+            </div>
+          </div>
+        ) : (
+          <div ref={mapContainer} className="w-full h-96 rounded-b-lg" />
+        )}
+        {(plannedRoute || locations.length > 1) && !mapError && (
           <div className="p-2 bg-muted/50 text-xs text-center rounded-b-lg">
             <div className="flex justify-center gap-4">
               {plannedRoute && (
