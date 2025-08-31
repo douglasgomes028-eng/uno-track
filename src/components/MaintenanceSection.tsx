@@ -75,75 +75,62 @@ const MaintenanceSection = () => {
 
   return (
     <Card className="w-full shadow-card-custom">
-      <CardHeader className="bg-gradient-subtle rounded-t-lg">
-        <CardTitle className="flex items-center gap-2">
-          <Wrench className="h-5 w-5 text-primary" />
-          Manutenção Preventiva - Fiat Uno 1991
+      <CardHeader className="bg-gradient-subtle rounded-t-lg pb-3">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Wrench className="h-4 w-4 text-primary" />
+          Manutenção Preventiva
+          <div className="text-xs font-normal text-muted-foreground ml-1">
+            Fiat Uno 1991
+          </div>
         </CardTitle>
       </CardHeader>
-      <CardContent className="p-6">
-        <div className="mb-6 p-4 bg-primary/10 rounded-lg border border-primary/20">
-          <h4 className="font-semibold text-primary mb-2">Recomendações da Fábrica</h4>
-          <p className="text-sm text-muted-foreground">
-            Baseado nas especificações oficiais do Fiat Uno 1991 Motor Fiasa 1.0.
-            Mantenha seu veículo sempre em dia para garantir performance e durabilidade.
-          </p>
-        </div>
-
-        <div className="space-y-4">
-          {maintenanceItems.map((item) => {
+      <CardContent className="p-4">
+        <div className="space-y-3">
+          {maintenanceItems.slice(0, 3).map((item) => {
             const status = getMaintenanceStatus(item);
             const StatusIcon = status.icon;
             
             return (
-              <div key={item.name} className="p-4 border rounded-lg hover:bg-muted/30 transition-colors">
-                <div className="flex items-center justify-between mb-3">
+              <div key={item.name} className="p-3 border rounded-md hover:bg-muted/20 transition-colors">
+                <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
-                    <StatusIcon className={`w-4 h-4 ${status.color}`} />
-                    <h4 className="font-medium">{item.name}</h4>
+                    <StatusIcon className={`w-3 h-3 ${status.color}`} />
+                    <h5 className="font-medium text-sm">{item.name}</h5>
                   </div>
-                  <Badge variant={status.variant}>
+                  <Badge variant={status.variant} className="text-xs px-1 py-0">
                     {status.label}
                   </Badge>
                 </div>
 
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
+                <div className="space-y-1">
+                  <div className="flex justify-between text-xs">
                     <span className="text-muted-foreground">
-                      A cada {item.intervalKm.toLocaleString()} km
+                      {item.intervalKm >= 1000 ? `${(item.intervalKm/1000)}k km` : `${item.intervalKm} km`}
                     </span>
                     <span className="font-medium">
                       {item.kmRemaining > 0 
-                        ? `Faltam ${item.kmRemaining.toFixed(0)} km`
-                        : `Atrasada ${Math.abs(item.kmRemaining).toFixed(0)} km`
+                        ? `${item.kmRemaining.toFixed(0)} km`
+                        : `Atrasada`
                       }
                     </span>
                   </div>
                   
                   <Progress 
                     value={getProgressValue(item)} 
-                    className="h-2"
+                    className="h-1"
                   />
-                  
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>Última: {item.lastKm.toLocaleString()} km</span>
-                    <span>Próxima: {item.nextKm.toLocaleString()} km</span>
-                  </div>
                 </div>
               </div>
             );
           })}
-        </div>
-
-        <div className="mt-6 p-4 bg-muted/50 rounded-lg">
-          <h5 className="font-medium mb-2 flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 text-warning" />
-            Importante
-          </h5>
-          <p className="text-sm text-muted-foreground">
-            Estas são recomendações gerais para o Fiat Uno 1991. Consulte sempre um profissional 
-            qualificado e considere as condições de uso do seu veículo (urbano, rodoviário, etc.).
-          </p>
+          
+          {maintenanceItems.length > 3 && (
+            <div className="text-center pt-2">
+              <p className="text-xs text-muted-foreground">
+                +{maintenanceItems.length - 3} itens de manutenção
+              </p>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>
