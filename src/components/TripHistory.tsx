@@ -83,10 +83,10 @@ const TripHistory = () => {
 
   return (
     <Card className="w-full shadow-card-custom">
-      <CardHeader className="bg-gradient-subtle rounded-t-lg pb-3">
+      <CardHeader className="bg-gradient-subtle rounded-t-lg">
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <History className="h-4 w-4 text-primary" />
+          <CardTitle className="flex items-center gap-2">
+            <History className="h-5 w-5 text-primary" />
             Histórico de Percursos
           </CardTitle>
           {trips.length > 0 && (
@@ -94,58 +94,87 @@ const TripHistory = () => {
               variant="outline"
               size="sm"
               onClick={handleClearData}
-              className="text-muted-foreground border-border hover:bg-muted hover:text-foreground h-7 w-7 p-0"
+              className="text-muted-foreground border-border hover:bg-muted hover:text-foreground"
             >
-              <Trash2 className="h-3 w-3" />
+              <Trash2 className="h-4 w-4" />
             </Button>
           )}
         </div>
       </CardHeader>
-      <CardContent className="p-4">
+      <CardContent className="p-6">
         {trips.length === 0 ? (
-          <div className="text-center py-6">
-            <History className="h-8 w-8 mx-auto mb-3 text-muted-foreground opacity-50" />
-            <p className="text-sm text-muted-foreground mb-1">Nenhum percurso ainda.</p>
-            <p className="text-xs text-muted-foreground">Inicie seu primeiro tracking!</p>
+          <div className="text-center py-8">
+            <History className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+            <p className="text-muted-foreground mb-2">Nenhum percurso registrado ainda.</p>
+            <p className="text-sm text-muted-foreground">Inicie seu primeiro tracking para ver o histórico aqui!</p>
           </div>
         ) : (
-          <div className="space-y-4">
-            {/* Summary Cards - Simplified for sidebar */}
-            <div className="grid grid-cols-1 gap-2">
-              <div className="text-center p-2 bg-primary/10 rounded-md border border-primary/20">
-                <div className="text-lg font-bold text-primary">{lastKm.toFixed(0)}</div>
-                <div className="text-xs text-muted-foreground">Último KM</div>
+          <div className="space-y-6">
+            {/* Summary Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="text-center p-4 bg-primary/10 rounded-lg border border-primary/20">
+                <div className="text-2xl font-bold text-primary">{lastKm.toFixed(0)}</div>
+                <div className="text-sm text-muted-foreground">Último KM</div>
+              </div>
+              <div className="text-center p-4 bg-success/10 rounded-lg border border-success/20">
+                <div className="text-2xl font-bold text-success">
+                  {trips.reduce((sum, trip) => sum + trip.kmTraveled, 0).toFixed(0)}
+                </div>
+                <div className="text-sm text-muted-foreground">Total Percorrido</div>
+              </div>
+              <div className="text-center p-4 bg-warning/10 rounded-lg border border-warning/20">
+                <div className="text-2xl font-bold text-warning">
+                  {trips.reduce((sum, trip) => sum + trip.fuelConsumed, 0).toFixed(1)}L
+                </div>
+                <div className="text-sm text-muted-foreground">Combustível Total</div>
               </div>
             </div>
 
-            {/* Trip List - Compact for sidebar */}
-            <div className="space-y-2">
-              {trips.slice(0, 3).map((trip, index) => (
-                <div key={trip.id} className="p-2 border rounded-md hover:bg-muted/30 transition-colors">
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="text-xs font-medium truncate flex-1">
-                      {index === 0 ? "Casa → Mercado" : 
-                       index === 1 ? "Trabalho → Academia" : 
-                       "Centro → Casa"}
-                    </div>
-                    <Badge variant="secondary" className="text-xs px-1 py-0 ml-1">
-                      R$ {(trip.fuelConsumed * 5.5).toFixed(2)}
+            {/* Trip List - mostrar em ordem cronológica correta */}
+            <div className="space-y-3">
+              {trips.map((trip, index) => (
+                <div key={trip.id} className="p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                  <div className="flex items-center justify-between mb-2">
+                    <Badge variant={index === trips.length - 1 ? "default" : "secondary"}>
+                      {index === trips.length - 1 ? "Primeiro Registro" : 
+                       index === 0 ? "Último percurso" : 
+                       `Percurso ${trips.length - index}`}
                     </Badge>
+                    <div className="text-sm text-muted-foreground flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      {formatDate(trip.endTime)}
+                    </div>
                   </div>
                   
-                  <div className="text-xs text-muted-foreground">
-                    {formatDate(trip.endTime).split(' ')[0]} • {trip.kmTraveled.toFixed(1)} km
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                    <div className="flex items-center gap-2">
+                      <Route className="w-4 h-4 text-primary" />
+                      <div>
+                        <div className="font-medium">{trip.kmTraveled.toFixed(2)} km</div>
+                        <div className="text-muted-foreground text-xs">Percorrido</div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <Fuel className="w-4 h-4 text-success" />
+                      <div>
+                        <div className="font-medium">{trip.fuelConsumed.toFixed(2)}L</div>
+                        <div className="text-muted-foreground text-xs">Consumido</div>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <div className="font-medium">{trip.startKm.toFixed(0)} → {trip.endKm.toFixed(0)}</div>
+                      <div className="text-muted-foreground text-xs">KM inicial → final</div>
+                    </div>
+                    
+                    <div>
+                      <div className="font-medium">{trip.averageConsumption.toFixed(1)} km/L</div>
+                      <div className="text-muted-foreground text-xs">Consumo médio</div>
+                    </div>
                   </div>
                 </div>
               ))}
-              
-              {trips.length > 3 && (
-                <div className="text-center pt-2">
-                  <p className="text-xs text-muted-foreground">
-                    +{trips.length - 3} mais percursos
-                  </p>
-                </div>
-              )}
             </div>
           </div>
         )}
